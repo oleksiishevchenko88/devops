@@ -1,0 +1,12 @@
+- task: AzureResourceManagerTemplateDeployment@3
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: 'PaYGo(f950b311-ab76-4922-b897-183a64499cac)'
+    subscriptionId: 'f950b311-ab76-4922-b897-183a64499cac'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: 'devopsdeployments'
+    location: 'East US'
+    templateLocation: 'URL of the file'
+    csmFileLink: 'https://github.com/oleksiishevchenko88/devops/blob/main/RGTemplate'
+    csmParametersFileLink: 'https://github.com/oleksiishevchenko88/devops/blob/main/RGParameters'
+    deploymentMode: 'Incremental'
