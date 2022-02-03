@@ -1,0 +1,173 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_processagedblob_name": {
+            "defaultValue": "processagedblob",
+            "type": "String"
+        },
+        "connections_azureblob_2_externalid": {
+            "defaultValue": "/subscriptions/f950b311-ab76-4922-b897-183a64499cac/resourceGroups/logicapps/providers/Microsoft.Web/connections/azureblob-2",
+            "type": "String"
+        },
+        "connections_azurequeues_externalid": {
+            "defaultValue": "/subscriptions/f950b311-ab76-4922-b897-183a64499cac/resourceGroups/logicapps/providers/Microsoft.Web/connections/azurequeues",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_processagedblob_name')]",
+            "location": "eastus",
+            "tags": {
+                "purpose": "logicapp"
+            },
+            "properties": {
+                "state": "Disabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "Recurrence": {
+                            "recurrence": {
+                                "frequency": "Month",
+                                "interval": 1
+                            },
+                            "evaluatedRecurrence": {
+                                "frequency": "Month",
+                                "interval": 1
+                            },
+                            "type": "Recurrence"
+                        }
+                    },
+                    "actions": {
+                        "For_each": {
+                            "foreach": "@body('Lists_blobs_(V2)')?['value']",
+                            "actions": {
+                                "Condition": {
+                                    "actions": {
+                                        "Delete_blob_(V2)": {
+                                            "runAfter": {
+                                                "Put_a_message_on_a_queue_(V2)": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "headers": {
+                                                    "SkipDeleteIfFileNotFoundOnServer": false
+                                                },
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['azureblob_1']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "delete",
+                                                "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('lappssa'))}/files/@{encodeURIComponent(encodeURIComponent(items('For_each')?['Path']))}"
+                                            }
+                                        },
+                                        "Put_a_message_on_a_queue_(V2)": {
+                                            "runAfter": {},
+                                            "type": "ApiConnection",
+                                            "inputs": {
+                                                "body": "@items('For_each')?['Path']",
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "post",
+                                                "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('lappssa'))}/queues/@{encodeURIComponent('toacrhive')}/messages"
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {},
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "less": [
+                                                    "@ticks(items('for_each')?['LastModified'])",
+                                                    "@ticks(addMinutes(utcNow(), variables('TierAgeMinutes')))"
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "type": "If"
+                                }
+                            },
+                            "runAfter": {
+                                "Lists_blobs_(V2)": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Foreach"
+                        },
+                        "Initialize_variable": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "TierAgeMinutes",
+                                        "type": "integer",
+                                        "value": -2
+                                    }
+                                ]
+                            }
+                        },
+                        "Lists_blobs_(V2)": {
+                            "runAfter": {
+                                "Initialize_variable": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "metadata": {
+                                "JTJmaW1hZ2Vz": "/images"
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['azureblob_1']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('lappssa'))}/foldersV2/@{encodeURIComponent(encodeURIComponent('JTJmaW1hZ2Vz'))}",
+                                "queries": {
+                                    "nextPageMarker": "",
+                                    "useFlatListing": false
+                                }
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azureblob_1": {
+                                "connectionId": "[parameters('connections_azureblob_2_externalid')]",
+                                "connectionName": "azureblob-2",
+                                "id": "/subscriptions/f950b311-ab76-4922-b897-183a64499cac/providers/Microsoft.Web/locations/eastus/managedApis/azureblob"
+                            },
+                            "azurequeues": {
+                                "connectionId": "[parameters('connections_azurequeues_externalid')]",
+                                "connectionName": "azurequeues",
+                                "id": "/subscriptions/f950b311-ab76-4922-b897-183a64499cac/providers/Microsoft.Web/locations/eastus/managedApis/azurequeues"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
