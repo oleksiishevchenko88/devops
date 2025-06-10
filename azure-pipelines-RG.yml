@@ -1,0 +1,26 @@
+trigger:
+- main   # Runs when code is pushed to 'main' branch
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  location: 'eastus'                      # Azure region
+  resourceGroupName: 'eus-DevOps-rg1'  # Name for the new RG
+
+stages:
+- stage: CreateRG
+  jobs:
+  - job: CreateResourceGroup
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'os-azure-conn'  # Name of your service connection
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Creating resource group: ${{ variables.resourceGroupName }} in ${{ variables.location }}"
+          az group create \
+            --name ${{ variables.resourceGroupName }} \
+            --location ${{ variables.location }}
+      displayName: 'Create Azure Resource Group'
